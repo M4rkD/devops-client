@@ -1,112 +1,26 @@
-import json
+import comms
 
-from msrest import Configuration
-from msrest.authentication import BasicAuthentication
-from msrest.service_client import ServiceClient
-from msrest.universal_http import ClientRequest
-
-fields = [
- 'System.Id'
- 'System.AreaId'
- 'System.AreaPath'
- 'System.TeamProject'
- 'System.NodeName'
- 'System.AreaLevel1'
- 'System.AreaLevel2'
- 'System.Rev'
- 'System.AuthorizedDate'
- 'System.RevisedDate'
- 'System.IterationId'
- 'System.IterationPath'
- 'System.IterationLevel1'
- 'System.WorkItemType'
- 'System.State'
- 'System.Reason'
- 'System.AssignedTo'
- 'System.CreatedDate'
- 'System.CreatedBy'
- 'System.ChangedDate'
- 'System.ChangedBy'
- 'System.AuthorizedAs'
- 'System.PersonId'
- 'System.Watermark'
- 'System.CommentCount'
- 'System.Title'
- 'System.BoardColumn'
- 'System.BoardColumnDone'
- 'Microsoft.VSTS.Common.StateChangeDate'
- 'Microsoft.VSTS.Common.ActivatedDate'
- 'Microsoft.VSTS.Common.ActivatedBy'
- 'Microsoft.VSTS.Common.ResolvedDate'
- 'Microsoft.VSTS.Common.ResolvedBy'
- 'Microsoft.VSTS.Common.ClosedDate'
- 'Microsoft.VSTS.Common.ClosedBy'
- 'Microsoft.VSTS.Common.Priority'
- 'Microsoft.VSTS.Common.ValueArea'
- 'WEF_FBD2D976074B482F829B5958F33303A4_System.ExtensionMarker'
- 'WEF_FBD2D976074B482F829B5958F33303A4_Kanban.Column'
- 'WEF_FBD2D976074B482F829B5958F33303A4_Kanban.Column.Done'
- 'WEF_B48DD1C291164BEBA44336D79AA87179_System.ExtensionMarker'
- 'WEF_B48DD1C291164BEBA44336D79AA87179_Kanban.Column'
- 'WEF_B48DD1C291164BEBA44336D79AA87179_Kanban.Column.Done'
- 'System.Parent']
-
-class ResponseException(Exception):
-    pass
+personal_access_token = 'iywk3uook2xwvsmjhoztcb7qvka4qrpjvdtjicgaif3ofy5x4gbq'
 
 
-def get_client(personal_access_token, base_url):
-
-    config = Configuration(base_url)
-    VERSION = "6.0.0b2"
-    config.add_user_agent('azure-devops/{}'.format(VERSION))
-    config.additional_headers = {}
-
-    creds = BasicAuthentication('', personal_access_token)
-
-    client = ServiceClient(creds, config=config)
-
-    return client
 
 organisation = 'swansea-university'
 project = 'Swansea%20Academy%20of%20Advanced%20Computing'
 
-client = get_client(personal_access_token, f'https://dev.azure.com/{organisation}')
+client = comms.get_client(personal_access_token, f'https://dev.azure.com/{organisation}')
 
-def send(http_method, url, headers, content=None):
-    """Prepare and send request object according to configuration.
-    :param str http_method: GET/POST
-    :param str url: The request target url
-    :param dict headers: Any headers to add to the request.
-    :param content: Any body data to add to the request.
-    """
-    request = ClientRequest(method=http_method, url=url)
-
-    response = client.send(request=request, headers=headers, content=content)
-
-    if not response.ok:
-        raise ResponseException(f'Response Error <{response.status_code}> : \n{response.content}')
-    else:
-        return response
-
-def send_json(http_method, url, headers, content=None):
-    response = send(http_method, url, headers, content=None)
-
-    return response.json()
-
-def default_headers():
-    return {'Content-Type': 'application/json; charset=utf-8', 'Accept': 'application/json;api-version=6.0-preview.2', 'X-TFS-FedAuthRedirect': 'Suppress', 'X-VSS-ForceMsaPassThrough': 'true', 'X-TFS-Session': 'd3ce4044-af1c-45a2-8ef5-e1854f30bd6e'}
-
-def get(url):
-    headers = default_headers()
-
-    return send_json('GET', url=url, headers=headers)
 
 def get_teams():
-    return get(f'https://dev.azure.com/{organisation}/_apis/projects/{project}/teams')['value']
+    """
+    Fetch a list of teams
+    """
+    return comms.get(f'https://dev.azure.com/{organisation}/_apis/projects/{project}/teams')['value']
 
 def query(q):
-    response = send('POST',
+    """
+    Fetch list of work items given a wiql query
+    """
+    response = comms.send('POST',
                     url=f'https://dev.azure.com/{organisation}/_apis/wit/wiql',
                     headers = default_headers(),
                     content = {"query" : q})
@@ -118,6 +32,9 @@ def query(q):
     return work_items
 
 def get_work_items_by_id(ids):
+    """
+    Get work items by id (in chunks)
+    """
     all_items = []
 
     # ensure uniqueness of ids
@@ -134,6 +51,9 @@ def get_work_items_by_id(ids):
     return all_items
 
 def get_work_items_by_id_unchunked(ids):
+    """
+    Get work items by id (without chunking)
+    """
 
     ids = [str(id) for id in ids]
 
@@ -141,36 +61,30 @@ def get_work_items_by_id_unchunked(ids):
 
     url = f'https://dev.azure.com/swansea-university/_apis/wit/workItems?ids={ids}&$expand=Relations&errorPolicy=Omit'
 
-    return get(url)['value']
+    return comms.get(url)['value']
 
 def epics_by_team(team):
+    """
+    Fetch all epics for a given team
+    """
     results = query("SELECT * FROM workitems WHERE [System.WorkItemType] = 'EPIC' AND [System.AreaPath] = 'Swansea Academy of Advanced Computing\\"+ team + "'")
 
     return results
 
-teams = get_teams()
-
-# Add epics to teams
-for team in teams:
-  team_name = team['name']
-  print(team_name)
-  try:
-      team['children'] = epics_by_team(team['name'])
-  except:
-      print(f'Error finding epics for {team_name}')
-      team['children'] = []
-
-
-
-# look for relations or children
-# if relations, add to fetchable ids, if children, continue walking looking for fetchable ids
-# fetch all child items in dict
-# check if any unfetched relations in child items... (recur)
-
 def id_from_relation(relation):
+    """
+    Extract work item id from a relation (by splitting url)
+    """
     return int(relation['url'].split('/')[-1])
 
 def find_missing_ids(items):
+    """
+    Walk the `items` tree looking for a relations key without a children key, and collect the ids of the missing 'children' entries by reading the list in the 'relations' key.
+    Fetch only items of type Hierarchy-Forward
+    :param dict items: tree-like data structure (dicts and lists), in which identity of children is specified with the 'relations' key, and data of children is stored in children.
+    the ids of child work items.
+    :param dict wi_dict: a key key-value lookup structure. Keys are work item ids and values are the work item data.
+    """
     ids = set()
     for item in items:
         if 'children' in item:
@@ -190,6 +104,13 @@ def find_missing_ids(items):
     return ids
 
 def add_missing_children(items, wi_dict):
+    """
+    Walk the `items` tree looking for a relations key without a children key, and populate the children list based on the relations list.
+    the children work items have not been populated). Populate this list form `wi_dict`
+    :param dict items: tree-like data structure (dicts and lists), in which identity of children is specified with the 'relations' key, and data of children is stored in children.
+    the ids of child work items.
+    :param dict wi_dict: a key key-value lookup structure. Keys are work item ids and values are the work item data.
+    """
     for item in items:
         if 'children' in item:
            # item has had children added, walk the children
@@ -203,6 +124,11 @@ def add_missing_children(items, wi_dict):
             ]
 
 def org_summary(items, state_p = lambda x: True, level=0):
+    """
+    Walk the `items` tree printing the results based on a state predicate function `state_p`
+    :param dict items: tree-like data structure (dicts and lists)
+    :param function state_p: optional predicate function to filter outputs
+    """
     for idx, item in enumerate(items):
         assigned_to = ''
 
@@ -238,16 +164,39 @@ def print_summary(items, state_p = lambda x: True, level=0):
             # item has had children added, walk the children
             print_summary(item['children'], state_p, level + 1)
 
-def fill_in_missing_ids(teams):
-    missing_ids = find_missing_ids(teams)
+def fill_in_missing_ids(items):
+    """
+    Recur on the items tree structure, looking for missing ids.
+    Whilst missing ids are found, fetch their data.
+
+    :param dict items: tree-like data structure (dicts and lists)
+    :param function state_p: optional predicate function to filter outputs
+    """
+    missing_ids = find_missing_ids(items)
 
     if len(missing_ids) > 0:
         work_items = get_work_items_by_id(missing_ids)
         work_items_dict = { item['id'] : item for item in work_items }
-        add_missing_children(teams, work_items_dict)
+        add_missing_children(items, work_items_dict)
 
-        fill_in_missing_ids(teams)
+        fill_in_missing_ids(items)
 
+# Fetch epics for  teams
+teams = get_teams()
+
+for team in teams:
+  team_name = team['name']
+  print(team_name)
+  try:
+      team['children'] = epics_by_team(team['name'])
+  except:
+      print(f'Error finding epics for {team_name}')
+      team['children'] = []
+
+
+# Iterate list, recursively following (and adding) children fields to work items,
+# based on the ids found in their relation fields.
 fill_in_missing_ids(teams)
 
+# resursively print list
 print_summary(teams, state_p = lambda x : x != 'Closed')
