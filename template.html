@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Some Title</title>
+  <script src="/skewer"></script>
+
+  <style>
+    h1 {
+      color: red;
+    }
+
+    p {
+      color: blue;
+    }
+
+    div.item {
+      border: 1px solid gray;
+      margin: 10px;
+      padding: 10px;
+    }
+
+    div.epic {
+      background-color: powderblue;
+    }
+
+    div.feature {
+      background-color: lightgray;
+    }
+
+    div.task-level {
+      border: 2px solid;
+      box-shadow: 0px 0px;
+      color: black;
+      position: relative;
+    }
+
+    div.development-task {
+      background-color: yellow;
+    }
+
+   div.development-task > h2 {
+       float: yellow;
+   }
+
+    div.admin-task {
+      background-color: blue;
+    }
+
+    div.active {
+      color: green;
+    }
+
+    div.new {
+      color: blue;
+    }
+
+    h2,
+    h3 {
+      color: black;
+    }
+
+  </style>
+
+</head>
+
+<body>
+  <div class="epic item">
+    <h1>Project [AerOpt]</h1>
+
+    <div class="feature item">
+      <h2>Some feature</h2>
+
+      <div class="task-level development-task item active">
+          <h2><a href=""> This is an actual dev task</a></h2>
+        <p class="status">Active</span>
+        <p class="assigned-to"> mark.dawson@swansea.ac.uk </span>
+      </div>
+      <div class="task-level admin-task item active">
+          <h2><a href=""> This is an actual admin task</a></h2>
+          <p class="status">Active</span>
+              <p class="assigned-to"> mark.dawson@swansea.ac.uk </span>
+      </div>
+    </div>
+    <div class="feature item">
+      <h2>Some feature</h2>
+
+      <div class="developemnt-task item">
+        <h2>This is an actual dev task</h2>
+        <span class="assigned-to"> mark.dawson@swansea.ac.uk </span>
+        <div class="detail">
+          Detail about the dev task
+        </div>
+      </div>
+      <div class="developemnt-task item">
+        <h2>This is an actual dev task</h2>
+        <span class="assigned-to"> mark.dawson@swansea.ac.uk </span>
+        <div class="detail">
+          Detail about the dev task
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
